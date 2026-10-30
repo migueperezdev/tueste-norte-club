@@ -42,6 +42,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </Link>
 
             <Link
+              href="/cafes"
+              className="rounded px-3 py-2 hover:bg-stone-100"
+            >
+              Cafés del mes
+            </Link>
+
+            <Link
               href="/metodos"
               className="rounded px-3 py-2 hover:bg-stone-100"
             >
