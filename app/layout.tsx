@@ -34,7 +34,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               Club Tueste Norte
             </Link>
 
-            <Link href="/" className="rounded px-3 py-2 hover:bg-stone-100">
+            <Link
+              href="/"
+              className="rounded px-3 py-2 hover:bg-stone-100"
+            >
               Inicio
             </Link>
 
@@ -43,6 +46,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               className="rounded px-3 py-2 hover:bg-stone-100"
             >
               Métodos
+            </Link>
+
+            <Link
+              href="/entradas"
+              className="rounded px-3 py-2 hover:bg-stone-100"
+            >
+              Entradas
             </Link>
 
             <Link
