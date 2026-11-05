@@ -146,3 +146,34 @@ También se han comprobado manualmente:
 Los cambios del plan se mantienen únicamente en el estado del componente y se reinician al recargar.
 
 Esta versión no incluye autenticación real, persistencia en base de datos ni pagos.
+
+## Semana 7 — Base de datos del club
+
+El club utiliza Drizzle ORM y SQLite con tres tablas relacionadas.
+
+- `planes` guarda los precios mensuales y los gramos de cada plan.
+- `clientes` guarda los socios, con email único y una referencia a su plan.
+- `pedidos` guarda el cliente, el café, el mes y el estado de cada pedido.
+
+### Instalación y preparación
+
+Desde la raíz del proyecto, ejecuta estos comandos en orden.
+
+```cmd
+npm install
+npx drizzle-kit push
+npx tsx src/db/seed.ts
+npm run dev
+```
+
+El seed carga dos planes, dos clientes ficticios y cuatro pedidos.
+Puede ejecutarse varias veces sin duplicar esos registros.
+
+La base de datos se guarda en `data/sqlite/club.db`. La carpeta
+`/data/sqlite/` queda excluida de Git mediante `.gitignore`.
+
+### Consultar los datos con Studio
+
+```cmd
+npx drizzle-kit studio
+```
