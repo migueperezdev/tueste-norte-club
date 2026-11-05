@@ -177,3 +177,17 @@ La base de datos se guarda en `data/sqlite/club.db`. La carpeta
 ```cmd
 npx drizzle-kit studio
 ```
+
+### Alta de suscripción
+
+La página `/club/alta` carga los planes desde la base de datos.
+
+El formulario utiliza una Server Action que valida el nombre, el email
+y la existencia del plan elegido. El email se guarda en minúsculas y
+su restricción de unicidad evita altas duplicadas.
+
+Tras guardar el cliente, se llama a `revalidatePath("/club/alta")`.
+
+Se han comprobado el alta correcta, el aviso de email repetido y
+la validación del nombre formado solo por espacios. También se ha
+verificado el registro guardado mediante Drizzle Studio.
