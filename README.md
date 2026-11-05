@@ -191,3 +191,39 @@ Tras guardar el cliente, se llama a `revalidatePath("/club/alta")`.
 Se han comprobado el alta correcta, el aviso de email repetido y
 la validación del nombre formado solo por espacios. También se ha
 verificado el registro guardado mediante Drizzle Studio.
+
+### Listado de pedidos
+
+`/club/pedidos` agrupa por mes los pedidos guardados en SQLite. La consulta
+de Drizzle incluye el cliente de cada pedido mediante `with`. Cuando la
+consulta devuelve cero filas, la página muestra «Sin pedidos por ahora».
+
+### API de pedidos
+
+`GET http://localhost:3000/api/pedidos` devuelve un array de pedidos en JSON.
+Cada pedido contiene su café, mes y estado, junto con el identificador y el
+nombre del cliente en el objeto `cliente`.
+
+Con el servidor arrancado, ejecuta este comando.
+
+```cmd
+curl.exe -i http://localhost:3000/api/pedidos
+```
+
+Ejemplo de respuesta con un pedido.
+
+```json
+[
+  {
+    "id": 2,
+    "clienteId": 1,
+    "cafe": "Guatemala Antigua",
+    "mes": "2026-11",
+    "estado": "pendiente",
+    "cliente": {
+      "id": 1,
+      "nombre": "Álex"
+    }
+  }
+]
+```
