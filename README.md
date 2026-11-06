@@ -1,33 +1,34 @@
 # Club Tueste Norte
 
-Prototipo del área de socios del Club Tueste Norte, desarrollado para la semana 6 de las prácticas de CODE NODE.
+Área de socios del Club Tueste Norte, desarrollada durante las semanas 6 y 7 de las prácticas de CODE NODE.
 
-Permite consultar una suscripción de ejemplo, simular cambios en el número de bolsas mensuales y descubrir los cafés del mes con sus notas de cata.
+Permite darse de alta, consultar los pedidos de cada mes, simular el número de bolsas de una suscripción de ejemplo y descubrir los cafés del mes con sus notas de cata.
 
 ## Tecnologías
 
 - Next.js 16.4.3 con App Router.
 - React y TypeScript.
 - Tailwind CSS.
-- REST API de WordPress para el ejercicio 3.
+- Drizzle ORM y SQLite.
+- REST API de WordPress para las entradas.
 - Git para el control de versiones.
 
 ## Cómo arrancar el proyecto
 
 Se necesita Node.js compatible con Next.js 16 y npm. El entorno utilizado durante el desarrollo fue Node.js 24.19.0 y npm 11.17.0.
 
-Desde la raíz del proyecto:
+En un clon nuevo, ejecuta estos comandos en orden desde la raíz del proyecto.
 
-```bash
+```cmd
 npm install
+npx drizzle-kit push
+npx tsx src/db/seed.ts
 npm run dev
 ```
 
 Abre http://localhost:3000 en el navegador. Si ese puerto está ocupado, utiliza la dirección indicada por la terminal.
 
-El panel del socio y el catálogo utilizan datos mock y funcionan de forma independiente de WordPress.
-
-### WordPress para el ejercicio 3
+### WordPress para las entradas de la semana 6
 
 Para mostrar las entradas del blog se necesita la instalación local de WordPress de las semanas anteriores, con Apache y MySQL arrancados desde XAMPP.
 
@@ -43,7 +44,7 @@ Se solicitan como máximo las cinco entradas más recientes. Si WordPress no est
 
 ## Rutas
 
-Los tres ejercicios están incluidos en este mismo repositorio mediante rutas propias de la aplicación.
+El proyecto conserva las rutas de la semana 6 e incorpora el alta, el listado de pedidos y la API del club.
 
 | Ruta | Contenido |
 | --- | --- |
@@ -54,6 +55,9 @@ Los tres ejercicios están incluidos en este mismo repositorio mediante rutas pr
 | `/metodos` | Ejercicio 2: listado de métodos de preparación. |
 | `/metodos/[slug]` | Ejercicio 2: detalle de cada método. |
 | `/entradas` | Ejercicio 3: entradas obtenidas desde WordPress. |
+| `/club/alta` | Formulario de alta con los planes disponibles en SQLite. |
+| `/club/pedidos` | Pedidos del club agrupados por mes. |
+| `/api/pedidos` | Consulta GET de los pedidos en JSON. |
 
 Las rutas dinámicas leen `params` con `await params`. Cuando el slug no existe, llaman a `notFound()`.
 
@@ -61,15 +65,13 @@ El layout raíz mantiene una navegación común con enlaces de `next/link`.
 
 ## Fuente de datos del Club
 
-Se han elegido módulos mock tipados con TypeScript:
+Inicio lee de SQLite el nombre del socio de demostración y su plan, con el precio y los gramos mensuales. La misma base guarda los clientes y los pedidos del club.
 
-- `data/cafes.ts`: catálogo de cafés.
-- `data/socio.ts`: socio y suscripción de ejemplo.
-- `data/metodos.ts`: métodos de preparación del ejercicio 2.
+Estos archivos TypeScript completan los datos de ejemplo.
 
-Esta opción permite enseñar y probar el Club sin depender de que WordPress esté arrancado. Los datos se mantienen fuera de los componentes para facilitar su reutilización y modificación.
-
-Los cafés, el socio, los precios y la fecha de envío son datos ficticios de demostración.
+- `data/cafes.ts` contiene el catálogo de cafés.
+- `data/socio.ts` aporta el número de socio, las bolsas iniciales y la fecha de envío de la demostración.
+- `data/metodos.ts` contiene los métodos de preparación.
 
 ## Server Components y Client Components
 
@@ -82,10 +84,11 @@ Los Client Components son:
 - `components/SelectorBolsas.tsx`: utiliza `useState` y `onChange` para cambiar el número de bolsas y actualizar el precio mensual.
 - `app/ejercicios/componentes/BotonFavorito.tsx`: utiliza `useState` y `onClick` para alternar el estado de favorito.
 - `app/entradas/error.tsx`: es el componente de error del segmento y permite volver a solicitar las entradas mediante `retry()`.
+- `app/club/alta/formulario.tsx` usa `useActionState` para mostrar el resultado del alta.
 
 Los componentes que reciben props las tienen tipadas con TypeScript.
 
-## Ejercicio 3: fetch, carga y errores
+## Semana 6 — Entradas, carga y errores
 
 `app/entradas/page.tsx` es un Server Component async que realiza el fetch directamente con await y comprueba `res.ok`.
 
@@ -143,9 +146,7 @@ También se han comprobado manualmente:
 
 ## Alcance del prototipo
 
-Los cambios del plan se mantienen únicamente en el estado del componente y se reinician al recargar.
-
-Esta versión no incluye autenticación real, persistencia en base de datos ni pagos.
+El selector de bolsas simula el precio mensual y vuelve a su selección inicial al recargar la página.
 
 ## Semana 7 — Base de datos del club
 
@@ -157,14 +158,7 @@ El club utiliza Drizzle ORM y SQLite con tres tablas relacionadas.
 
 ### Instalación y preparación
 
-Desde la raíz del proyecto, ejecuta estos comandos en orden.
-
-```cmd
-npm install
-npx drizzle-kit push
-npx tsx src/db/seed.ts
-npm run dev
-```
+Para crear las tablas y cargar los datos de ejemplo, sigue los pasos de [Cómo arrancar el proyecto](#cómo-arrancar-el-proyecto).
 
 El seed carga dos planes, dos clientes ficticios y cuatro pedidos.
 Puede ejecutarse varias veces sin duplicar esos registros.
