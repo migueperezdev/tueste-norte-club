@@ -1,7 +1,31 @@
 import SelectorBolsas from "@/components/SelectorBolsas";
 import { socio, suscripcion } from "@/data/socio";
+import { db } from "@/src/db";
 
-export default function PaginaInicio() {
+export const dynamic = "force-dynamic";
+
+export default async function PaginaInicio() {
+  const clienteDemo = await db.query.clientes.findFirst({
+    where: (tabla, { eq }) => eq(tabla.email, "alex@example.com"),
+    with: {
+      plan: true,
+    },
+  });
+
+  if (!clienteDemo?.plan) {
+    return (
+      <main className="mx-auto max-w-5xl space-y-4 rounded-2xl bg-stone-50 p-6 text-stone-900 sm:p-8">
+        <h1 className="text-3xl font-bold">Club Tueste Norte</h1>
+        <p>La suscripción de demostración no está disponible.</p>
+      </main>
+    );
+  }
+
+  const { plan } = clienteDemo;
+  const bolsasIniciales = suscripcion.bolsas;
+  const gramosPorBolsa = plan.gramosMes / bolsasIniciales;
+  const precioPorBolsa = plan.precioMensual / bolsasIniciales;
+
   return (
     <main className="mx-auto max-w-5xl space-y-8 rounded-2xl bg-stone-50 p-6 text-stone-900 sm:p-8">
       <header className="space-y-3">
@@ -10,7 +34,7 @@ export default function PaginaInicio() {
         </p>
 
         <h1 className="text-3xl font-bold sm:text-4xl">
-          Hola, {socio.nombre}
+          Hola, {clienteDemo.nombre}
         </h1>
 
         <p className="text-stone-600">
@@ -22,7 +46,7 @@ export default function PaginaInicio() {
         <section className="space-y-5 rounded-xl border border-stone-200 bg-white p-6">
           <div className="space-y-2">
             <h2 className="text-xl font-bold">
-              Tu plan {suscripcion.plan}
+              Tu plan {plan.nombre}
             </h2>
 
             <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-800">
@@ -31,9 +55,9 @@ export default function PaginaInicio() {
           </div>
 
           <SelectorBolsas
-            bolsasIniciales={suscripcion.bolsas}
-            gramosPorBolsa={suscripcion.gramosPorBolsa}
-            precioPorBolsa={suscripcion.precioPorBolsa}
+            bolsasIniciales={bolsasIniciales}
+            gramosPorBolsa={gramosPorBolsa}
+            precioPorBolsa={precioPorBolsa}
           />
         </section>
 
@@ -52,7 +76,7 @@ export default function PaginaInicio() {
           </p>
 
           <p className="text-sm text-stone-600">
-            Cada bolsa contiene {suscripcion.gramosPorBolsa} g de café.
+            Cada bolsa contiene {gramosPorBolsa} g de café.
           </p>
         </section>
       </div>
