@@ -5,7 +5,7 @@ import * as schema from "./schema";
 
 mkdirSync("./data/sqlite", { recursive: true });
 
-export const sqlite = new Database("./data/sqlite/club.db");
+export const sqlite = new Database("./data/sqlite/club-semana8.db");
 
 sqlite.pragma("foreign_keys = ON");
 

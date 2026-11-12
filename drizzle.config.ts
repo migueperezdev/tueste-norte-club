@@ -7,6 +7,6 @@ export default defineConfig({
   dialect: "sqlite",
   schema: "./src/db/schema.ts",
   dbCredentials: {
-    url: "./data/sqlite/club.db",
+    url: "./data/sqlite/club-semana8.db",
   },
 });
