@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "../../../src/db";
 import { clientes, planes } from "../../../src/db/schema";
+import { getSession } from "../../../src/lib/session";
 
 export type EstadoAlta = {
   mensaje: string;
@@ -14,38 +15,17 @@ export async function registrarCliente(
   _estadoAnterior: EstadoAlta,
   formData: FormData,
 ): Promise<EstadoAlta> {
-  const nombreRecibido = formData.get("nombre");
-  const emailRecibido = formData.get("email");
+  const sesion = await getSession();
+
+  if (!sesion) {
+    return {
+      mensaje: "Debes iniciar sesión para apuntarte al club.",
+      correcto: false,
+    };
+  }
+
   const planRecibido = formData.get("planId");
-
-  if (
-    typeof nombreRecibido !== "string" ||
-    typeof emailRecibido !== "string" ||
-    typeof planRecibido !== "string"
-  ) {
-    return {
-      mensaje: "Completa el nombre, el email y el plan.",
-      correcto: false,
-    };
-  }
-
-  const nombre = nombreRecibido.trim();
-  const email = emailRecibido.trim().toLowerCase();
-  const planId = Number(planRecibido);
-
-  if (!nombre || !email) {
-    return {
-      mensaje: "Escribe tu nombre y tu email.",
-      correcto: false,
-    };
-  }
-
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return {
-      mensaje: "Escribe un email válido.",
-      correcto: false,
-    };
-  }
+  const planId = typeof planRecibido === "string" ? Number(planRecibido) : NaN;
 
   if (!Number.isSafeInteger(planId) || planId < 1) {
     return {
@@ -53,6 +33,8 @@ export async function registrarCliente(
       correcto: false,
     };
   }
+
+  const { id: userId, name: nombre, email } = sesion.user;
 
   try {
     const plan = db
@@ -68,18 +50,26 @@ export async function registrarCliente(
       };
     }
 
-    const cliente = db
+    const clienteCreado = db
       .insert(clientes)
-      .values({ nombre, email, planId })
-      .onConflictDoNothing({ target: clientes.email })
+      .values({ userId, nombre, email: email.trim().toLowerCase(), planId })
+      .onConflictDoNothing()
       .returning({ id: clientes.id })
       .get();
 
-    if (!cliente) {
-      return {
-        mensaje: "Este email ya está registrado en el club.",
-        correcto: false,
-      };
+    if (!clienteCreado) {
+      const clienteExistente = db
+        .select({ id: clientes.id })
+        .from(clientes)
+        .where(eq(clientes.userId, userId))
+        .get();
+
+      if (!clienteExistente) {
+        return {
+          mensaje: "Ese correo ya está asociado a una ficha del club.",
+          correcto: false,
+        };
+      }
     }
   } catch (error) {
     console.error("Error al registrar el cliente:", error);
@@ -93,7 +83,7 @@ export async function registrarCliente(
   revalidatePath("/club/alta");
 
   return {
-    mensaje: "¡Tu suscripción ha quedado registrada!",
+    mensaje: "Tu suscripción está registrada.",
     correcto: true,
   };
 }

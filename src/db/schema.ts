@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import { check, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { user } from "./auth-schema";
 
 export const planes = sqliteTable("planes", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -12,6 +13,7 @@ export const clientes = sqliteTable("clientes", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   nombre: text("nombre").notNull(),
   email: text("email").notNull().unique(),
+  userId: text("user_id").unique().references(() => user.id),
   planId: integer("plan_id").notNull().references(() => planes.id),
   fechaAlta: integer("fecha_alta", { mode: "timestamp" })
     .notNull()
