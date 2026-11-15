@@ -1,17 +1,20 @@
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 import type { NextConfig } from "next";
+import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 
-initOpenNextCloudflareForDev();
+export default async function configurarNext(phase: string): Promise<NextConfig> {
+  if (phase === PHASE_DEVELOPMENT_SERVER) {
+    await initOpenNextCloudflareForDev();
+  }
 
-const nextConfig: NextConfig = {
-  turbopack: {
-    rules: {
-      "*.css": {
-        loaders: ["@tailwindcss/turbopack"],
-        as: "*.css",
+  return {
+    turbopack: {
+      rules: {
+        "*.css": {
+          loaders: ["@tailwindcss/turbopack"],
+          as: "*.css",
+        },
       },
     },
-  },
-};
-
-export default nextConfig;
+  };
+}
