@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "tueste-norte-club",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-09-23",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tueste-norte-club",
+      "database_id": "ffbfc289-5414-423e-b1ac-6a1cc1d6edb3",
+      "migrations_dir": "drizzle"
+    }
+  ]
+}

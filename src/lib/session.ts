@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
-import { auth } from "./auth";
+import { getAuth } from "./auth";
 
 export async function getSession() {
-  return auth.api.getSession({ headers: await headers() });
+  const requestHeaders = await headers();
+  return getAuth().api.getSession({ headers: requestHeaders });
 }

@@ -1,10 +1,12 @@
-import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
-import { db } from "../db/index";
+import { betterAuth } from "better-auth";
+import { getDb } from "../db/d1";
 
-export const auth = betterAuth({
-  database: drizzleAdapter(db, { provider: "sqlite" }),
-  emailAndPassword: {
-    enabled: true,
-  },
-});
+export function getAuth() {
+  return betterAuth({
+    database: drizzleAdapter(getDb(), { provider: "sqlite" }),
+    emailAndPassword: {
+      enabled: true,
+    },
+  });
+}

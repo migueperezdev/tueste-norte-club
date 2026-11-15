@@ -1,7 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { db } from "../../../src/db";
+import { getDb } from "../../../src/db/d1";
 import { clientes, planes } from "../../../src/db/schema";
 import { getSession } from "../../../src/lib/session";
 import FormularioAlta from "./formulario";
@@ -15,6 +15,7 @@ export default async function AltaPage() {
     redirect("/login");
   }
 
+  const db = getDb();
   const suscripcion = await db.query.clientes.findFirst({
     where: eq(clientes.userId, sesion.user.id),
     with: { plan: true },
@@ -22,7 +23,7 @@ export default async function AltaPage() {
 
   const listaPlanes = suscripcion
     ? []
-    : db.select().from(planes).orderBy(asc(planes.precioMensual)).all();
+    : await db.select().from(planes).orderBy(asc(planes.precioMensual)).all();
 
   return (
     <section className="mx-auto max-w-2xl space-y-6 rounded bg-white p-6 text-stone-900">

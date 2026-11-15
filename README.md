@@ -1,73 +1,95 @@
 # Club Tueste Norte
 
-Área de socios del Club Tueste Norte, desarrollada durante las semanas 6 y 7 de las prácticas de CODE NODE.
+Área de socios del Club Tueste Norte, desarrollada durante las semanas 6, 7 y 8 de las prácticas de CODE NODE.
 
-Permite darse de alta, consultar los pedidos de cada mes, simular el número de bolsas de una suscripción de ejemplo y descubrir los cafés del mes con sus notas de cata.
+El proyecto permite descubrir los cafés del mes, consultar sus notas de cata y simular el precio de una suscripción según el número de bolsas. Los socios pueden crear una cuenta, elegir un plan y consultar sus propios pedidos.
+
+[Ver Club Tueste Norte en producción](https://tueste-norte-club.migueperezdev.workers.dev/)
 
 ## Tecnologías
 
-- Next.js 16.4.3 con App Router.
-- React y TypeScript.
-- Tailwind CSS.
-- Drizzle ORM y SQLite.
-- REST API de WordPress para las entradas.
+- Next.js 16.4.6 con App Router.
+- React, TypeScript y Tailwind CSS.
+- Better Auth para el registro y las sesiones.
+- Drizzle ORM y Cloudflare D1 para los datos del club. En la semana 7 se utilizó SQLite en un archivo local.
+- Cloudflare Workers, OpenNext y Wrangler para el despliegue.
+- API REST de WordPress para las entradas del blog.
 - Git para el control de versiones.
 
 ## Cómo arrancar el proyecto
 
-Se necesita Node.js compatible con Next.js 16 y npm. El entorno utilizado durante el desarrollo fue Node.js 24.19.0 y npm 11.17.0.
+Los siguientes pasos corresponden a la rama `semana-8`. Se necesita Node.js compatible con Next.js 16 y npm. Durante el desarrollo se utilizó Node.js 24.19.0 y npm 11.17.0.
 
-En un clon nuevo, ejecuta estos comandos en orden desde la raíz del proyecto.
+1. Desde la raíz del proyecto, instala las dependencias.
 
-```cmd
-npm install
-npx drizzle-kit push
-npx tsx src/db/seed.ts
-npm run dev
-```
+   ```cmd
+   npm ci
+   ```
 
-Abre http://localhost:3000 en el navegador. Si ese puerto está ocupado, utiliza la dirección indicada por la terminal.
+2. Crea un archivo `.env.local` en la raíz con estas variables. Sustituye el valor de ejemplo por un secreto generado para tu entorno local.
+
+   ```dotenv
+   BETTER_AUTH_URL=http://localhost:3000
+   BETTER_AUTH_SECRET=TU_SECRETO_LOCAL
+   ```
+
+   Puedes generar el secreto con este comando.
+
+   ```cmd
+   node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
+   ```
+
+   `.env.local` queda fuera de Git.
+
+3. Aplica las migraciones, carga los dos planes y arranca el servidor.
+
+   ```cmd
+   npx wrangler d1 migrations apply DB --local
+   npx wrangler d1 execute DB --local --command "INSERT INTO planes (nombre, precio_mensual, gramos_mes) VALUES ('Descubrimiento', 19, 500), ('Cafetero', 35, 1000) ON CONFLICT(nombre) DO NOTHING"
+   npm run dev
+   ```
+
+   Abre [http://localhost:3000](http://localhost:3000). Si arrancas en otro puerto, ajusta `BETTER_AUTH_URL` a la dirección que indica la terminal y reinicia el servidor.
+
+El D1 local empieza con el catálogo de planes. Para probar el área de socios, crea una cuenta en `/registro` y elige un plan en `/club/alta`. Una cuenta recién creada verá «Sin pedidos por ahora» hasta que tenga pedidos asociados.
 
 ### WordPress para las entradas de la semana 6
 
-Para mostrar las entradas del blog se necesita la instalación local de WordPress de las semanas anteriores, con Apache y MySQL arrancados desde XAMPP.
-
-La dirección utilizada es:
+Para mostrar las entradas del blog en local se necesita la instalación de WordPress de las semanas anteriores, con Apache y MySQL arrancados desde XAMPP.
 
 ```text
 http://localhost/tueste-norte-wp/wp-json/wp/v2/posts?per_page=5
 ```
 
-Si tu instalación utiliza otra dirección, modifica la URL del fetch en `app/entradas/page.tsx`.
-
-Se solicitan como máximo las cinco entradas más recientes. Si WordPress no está disponible, la ruta muestra su pantalla de error.
+Si tu instalación utiliza otra dirección, modifica la URL del `fetch` en `app/entradas/page.tsx`. La consulta solicita como máximo las cinco entradas más recientes. Si WordPress no está disponible, el segmento muestra su pantalla de error. Para que `/entradas` funcione también en Cloudflare, el Worker tendría que consultar una URL de WordPress accesible desde Internet.
 
 ## Rutas
 
-El proyecto conserva las rutas de la semana 6 e incorpora el alta, el listado de pedidos y la API del club.
-
 | Ruta | Contenido |
 | --- | --- |
-| `/` | Panel del socio: plan, selector de bolsas y próximo envío. |
+| `/` | Demostración pública con el plan Descubrimiento, el selector de bolsas y un envío ficticio. |
 | `/cafes` | Catálogo de los cafés del mes. |
 | `/cafes/[slug]` | Ficha de un café con descripción, origen, tueste, notas de cata y proceso. |
-| `/ejercicios/componentes` | Ejercicio 1: etiquetas de tueste y botón de favoritos. |
-| `/metodos` | Ejercicio 2: listado de métodos de preparación. |
-| `/metodos/[slug]` | Ejercicio 2: detalle de cada método. |
-| `/entradas` | Ejercicio 3: entradas obtenidas desde WordPress. |
-| `/club/alta` | Formulario de alta con los planes disponibles en SQLite. |
-| `/club/pedidos` | Pedidos del club agrupados por mes. |
-| `/api/pedidos` | Consulta GET de los pedidos en JSON. |
+| `/ejercicios/componentes` | Ejercicio 1 de la semana 6 con etiquetas de tueste y botón de favoritos. |
+| `/metodos` | Ejercicio 2 de la semana 6 con el listado de métodos de preparación. |
+| `/metodos/[slug]` | Detalle de cada método de preparación. |
+| `/entradas` | Ejercicio 3 de la semana 6 con entradas obtenidas desde WordPress. |
+| `/registro` | Creación de una cuenta del club. |
+| `/login` | Inicio de sesión. |
+| `/club/perfil` | Perfil de la cuenta autenticada y cierre de sesión. |
+| `/club/alta` | Elección de un plan o consulta de la suscripción actual. |
+| `/club/pedidos` | Pedidos del socio autenticado, agrupados por mes. |
+| `/api/pedidos` | Consulta `GET` de los pedidos del socio autenticado en JSON. |
 
-Las rutas dinámicas leen `params` con `await params`. Cuando el slug no existe, llaman a `notFound()`.
+Las rutas dinámicas de cafés y métodos leen `params` con `await params`. Si el slug no existe, llaman a `notFound()`.
 
-El layout raíz mantiene una navegación común con enlaces de `next/link`.
+El layout raíz mantiene la navegación con `next/link`. Muestra **Entrar** cuando no hay sesión y el nombre del socio cuando la hay.
 
-## Fuente de datos del Club
+## Fuente de datos del club
 
-Inicio lee de SQLite el nombre del socio de demostración y su plan, con el precio y los gramos mensuales. La misma base guarda los clientes y los pedidos del club.
+Cloudflare D1 guarda los planes, clientes y pedidos, además de las tablas de Better Auth. `src/db/schema.ts` define el esquema de Drizzle y `src/db/d1.ts` conecta la aplicación con el binding `DB` de Cloudflare.
 
-Estos archivos TypeScript completan los datos de ejemplo.
+La portada consulta en D1 el precio y los gramos del plan **Descubrimiento**. El saludo a Álex y los datos del envío forman parte de la demostración pública.
 
 - `data/cafes.ts` contiene el catálogo de cafés.
 - `data/socio.ts` aporta el número de socio, las bolsas iniciales y la fecha de envío de la demostración.
@@ -75,149 +97,98 @@ Estos archivos TypeScript completan los datos de ejemplo.
 
 ## Server Components y Client Components
 
-Las páginas, el layout, `TarjetaCafe` y `EtiquetaTueste` permanecen como Server Components.
+Las páginas que consultan D1, el layout raíz, `TarjetaCafe` y `EtiquetaTueste` son Server Components. `EtiquetaTueste` recibe el nivel de tueste como prop y muestra la etiqueta correspondiente.
 
-`EtiquetaTueste` solo necesita recibir un nivel de tueste y mostrar una etiqueta: no utiliza estado ni eventos del navegador.
+Entre los Client Components están:
 
-Los Client Components son:
+- `components/SelectorBolsas.tsx`, que usa `useState` y `onChange` para actualizar el número de bolsas y el precio mensual.
+- `app/ejercicios/componentes/BotonFavorito.tsx`, que usa `useState` y `onClick` para alternar el estado de favorito.
+- `app/entradas/error.tsx`, que muestra el error del segmento y permite reintentar la carga.
+- `app/club/alta/formulario.tsx`, que usa `useActionState` para mostrar el resultado del alta.
 
-- `components/SelectorBolsas.tsx`: utiliza `useState` y `onChange` para cambiar el número de bolsas y actualizar el precio mensual.
-- `app/ejercicios/componentes/BotonFavorito.tsx`: utiliza `useState` y `onClick` para alternar el estado de favorito.
-- `app/entradas/error.tsx`: es el componente de error del segmento y permite volver a solicitar las entradas mediante `retry()`.
-- `app/club/alta/formulario.tsx` usa `useActionState` para mostrar el resultado del alta.
+Las props están tipadas con TypeScript.
 
-Los componentes que reciben props las tienen tipadas con TypeScript.
+## Semana 6 · Entradas, carga y errores
 
-## Semana 6 — Entradas, carga y errores
+`app/entradas/page.tsx` es un Server Component asíncrono. Hace la petición a WordPress con `await`, comprueba `res.ok` y utiliza `cache: "no-store"`.
 
-`app/entradas/page.tsx` es un Server Component async que realiza el fetch directamente con await y comprueba `res.ok`.
-
-La petición utiliza `cache: "no-store"`.
-
-El segmento incluye:
-
-- `loading.tsx`: muestra el estado de carga.
-- `error.tsx`: muestra un mensaje de error y el botón «Reintentar».
-
-La petición directa a la API de WordPress se ejecuta en el servidor de Next.js. En Network del navegador aparecen las solicitudes a Next.js, pero no esa petición del servidor a WordPress. Esta explicación también está incluida como comentario en el código.
+El segmento incluye `loading.tsx` para el estado de carga y `error.tsx` para mostrar el error y ofrecer el botón **Reintentar**. La petición a WordPress sale del servidor de Next.js. En la pestaña **Network** del navegador se ven las solicitudes a Next.js.
 
 ### Cómo comprobar la carga
 
-En `app/entradas/page.tsx` hay una línea comentada con un retardo artificial de dos segundos.
-
-Descoméntala temporalmente y navega desde otra sección a «Entradas» para observar `loading.tsx`. Después vuelve a dejarla comentada.
+En `app/entradas/page.tsx` hay una línea comentada con un retardo de dos segundos. Descoméntala temporalmente, navega a **Entradas** desde otra sección y observa el estado de carga. Después vuelve a comentar la línea.
 
 ### Cómo comprobar el error
 
 1. Abre `/entradas` con WordPress funcionando.
-2. Detén Apache desde XAMPP.
-3. Recarga la página con Ctrl + F5.
-4. Comprueba que aparece la pantalla de error.
-5. Arranca Apache de nuevo, comprueba que MySQL sigue funcionando y pulsa «Reintentar».
+2. Detén Apache desde XAMPP y recarga con `Ctrl + F5`.
+3. Comprueba que aparece la pantalla de error.
+4. Arranca Apache de nuevo, comprueba que MySQL sigue funcionando y pulsa **Reintentar**.
 
 Durante el desarrollo también puede aparecer el panel de depuración de Next.js con el error provocado.
 
-## Diseño responsive
+## Semana 7 · Base de datos del club
 
-El diseño utiliza flex y grid de Tailwind con breakpoints:
+En la semana 7 se creó la base SQLite original con tres tablas relacionadas.
 
-- Las tarjetas del panel se apilan en ventanas estrechas.
-- El catálogo muestra una, dos o tres columnas según el espacio disponible.
-- La navegación permite que los enlaces pasen a otra línea.
-
-## Comprobaciones
-
-```bash
-npm run lint
-npm run build
-```
-
-Ambas comprobaciones han finalizado correctamente durante la preparación de la práctica.
-
-También se han comprobado manualmente:
-
-- La navegación entre páginas.
-- El cambio de bolsas y la actualización del precio.
-- El retorno al plan inicial al recargar.
-- Las fichas de los cafés y de los métodos.
-- El 404 para slugs inexistentes.
-- Los estados de carga, error y recuperación de las entradas.
-- La adaptación del panel y del catálogo al estrechar la ventana.
-
-## Alcance del prototipo
-
-El selector de bolsas simula el precio mensual y vuelve a su selección inicial al recargar la página.
-
-## Semana 7 — Base de datos del club
-
-El club utiliza Drizzle ORM y SQLite con tres tablas relacionadas.
-
-- `planes` guarda los precios mensuales y los gramos de cada plan.
-- `clientes` guarda los socios, con email único y una referencia a su plan.
+- `planes` guarda el precio y los gramos mensuales de cada plan.
+- `clientes` guarda la ficha del socio, con un correo único y una referencia a su plan.
 - `pedidos` guarda el cliente, el café, el mes y el estado de cada pedido.
 
-### Instalación y preparación
+El flujo original creaba las tablas con Drizzle Kit y cargaba datos con `src/db/seed.ts`. El seed incorporaba dos planes, dos clientes ficticios y cuatro pedidos sin duplicarlos al repetirlo. La base original se guardaba en `data/sqlite/club.db`. La carpeta `data/sqlite/` queda excluida de Git. Drizzle Studio se utilizó para comprobar los registros en la base SQLite configurada.
 
-Para crear las tablas y cargar los datos de ejemplo, sigue los pasos de [Cómo arrancar el proyecto](#cómo-arrancar-el-proyecto).
+El formulario original de alta validaba el nombre, el correo y la existencia del plan. Se probaron el alta correcta, el aviso de correo repetido y el rechazo de un nombre formado solo por espacios. El listado agrupaba los pedidos por mes y la API los devolvía en JSON con los datos básicos del cliente.
 
-El seed carga dos planes, dos clientes ficticios y cuatro pedidos.
-Puede ejecutarse varias veces sin duplicar esos registros.
+## Semana 8 · Autenticación, pedidos privados y despliegue
 
-La base de datos se guarda en `data/sqlite/club.db`. La carpeta
-`/data/sqlite/` queda excluida de Git mediante `.gitignore`.
+Better Auth gestiona el registro, el inicio y el cierre de sesión. El servidor lee la sesión a partir de las cabeceras de la petición. Las rutas bajo `/club` requieren una sesión y redirigen a `/login` cuando falta.
 
-### Consultar los datos con Studio
+El alta valida el plan elegido y usa los datos de la cuenta autenticada para vincular la ficha del socio mediante `clientes.user_id`. Tras guardar, la Server Action llama a `revalidatePath("/club/alta")` para que la página vuelva a consultar la suscripción.
 
-```cmd
-npx drizzle-kit studio
-```
+La página `/club/pedidos` y la API `/api/pedidos` filtran los pedidos por la ficha vinculada a la cuenta de la sesión. La página muestra «Sin pedidos por ahora» cuando la cuenta no tiene pedidos. La API devuelve un array JSON con el café, el mes, el estado y un objeto `cliente` con su identificador y nombre. Una solicitud sin sesión recibe `401` y el mensaje «Debes iniciar sesión».
 
-### Alta de suscripción
-
-La página `/club/alta` carga los planes desde la base de datos.
-
-El formulario utiliza una Server Action que valida el nombre, el email
-y la existencia del plan elegido. El email se guarda en minúsculas y
-su restricción de unicidad evita altas duplicadas.
-
-Tras guardar el cliente, se llama a `revalidatePath("/club/alta")`.
-
-Se han comprobado el alta correcta, el aviso de email repetido y
-la validación del nombre formado solo por espacios. También se ha
-verificado el registro guardado mediante Drizzle Studio.
-
-### Listado de pedidos
-
-`/club/pedidos` agrupa por mes los pedidos guardados en SQLite. La consulta
-de Drizzle incluye el cliente de cada pedido mediante `with`. Cuando la
-consulta devuelve cero filas, la página muestra «Sin pedidos por ahora».
-
-### API de pedidos
-
-`GET http://localhost:3000/api/pedidos` devuelve un array de pedidos en JSON.
-Cada pedido contiene su café, mes y estado, junto con el identificador y el
-nombre del cliente en el objeto `cliente`.
-
-Con el servidor arrancado, ejecuta este comando.
+Puedes comprobar la respuesta sin sesión desde CMD con el servidor local arrancado.
 
 ```cmd
 curl.exe -i http://localhost:3000/api/pedidos
 ```
 
-Ejemplo de respuesta con un pedido.
+### Cloudflare Workers y D1
 
-```json
-[
-  {
-    "id": 2,
-    "clienteId": 1,
-    "cafe": "Guatemala Antigua",
-    "mes": "2026-11",
-    "estado": "pendiente",
-    "cliente": {
-      "id": 1,
-      "nombre": "Álex"
-    }
-  }
-]
+`wrangler.jsonc` define el Worker, los archivos estáticos y el binding `DB`. Las migraciones SQL están en `drizzle/`. Las bases D1 local y remota se preparan con `--local` y `--remote`, respectivamente.
+
+Para compilar y probar en el entorno local de Workers, detén primero `npm run dev` si está usando el puerto `3000`.
+
+```cmd
+npx opennextjs-cloudflare build
+npx wrangler dev --port 3000
 ```
+
+La versión pública usa el D1 remoto. En Cloudflare, `BETTER_AUTH_URL` apunta a la URL pública y `BETTER_AUTH_SECRET` se configura como secreto del Worker. Los valores privados quedan fuera del repositorio.
+
+## Diseño responsive
+
+- Las tarjetas del panel se apilan en ventanas estrechas.
+- El catálogo muestra una, dos o tres columnas según el espacio disponible.
+- Los enlaces de navegación pueden pasar a otra línea.
+
+El selector de bolsas simula el precio mensual. Al recargar la portada, vuelve a la selección inicial de la demostración.
+
+## Comprobaciones
+
+Para revisar el proyecto en local puedes ejecutar:
+
+```cmd
+npm run lint
+npx tsc --noEmit
+npm run build
+```
+
+Durante la práctica se comprobaron manualmente:
+
+- La navegación, el selector de bolsas y el retorno a la selección inicial al recargar.
+- Las fichas de cafés y métodos, el 404 para slugs inexistentes y los estados de carga, error y recuperación de las entradas.
+- La adaptación del panel y del catálogo al reducir el ancho de la ventana.
+- En D1 local, dos cuentas con pedidos distintos vieron únicamente sus propios pedidos, tanto en la página como en la API.
+- En el Worker local compilado, se comprobó el acceso a los pedidos con sesión y el bloqueo al cerrarla.
+- En producción, se comprobó el registro, la persistencia del plan al recargar, la vista sin pedidos y la vuelta a `/login` tras cerrar sesión.

@@ -1,7 +1,7 @@
 import { eq, inArray } from "drizzle-orm";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { db } from "../../../src/db";
+import { getDb } from "../../../src/db/d1";
 import { clientes } from "../../../src/db/schema";
 import { getSession } from "../../../src/lib/session";
 
@@ -14,6 +14,7 @@ export default async function PedidosPage() {
     redirect("/login");
   }
 
+  const db = getDb();
   const fichasDelUsuario = db
     .select({ id: clientes.id })
     .from(clientes)

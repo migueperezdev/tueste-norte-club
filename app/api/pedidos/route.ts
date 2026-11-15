@@ -1,6 +1,6 @@
 import { eq, inArray } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { db } from "../../../src/db";
+import { getDb } from "../../../src/db/d1";
 import { clientes } from "../../../src/db/schema";
 import { getSession } from "../../../src/lib/session";
 
@@ -15,6 +15,7 @@ export async function GET() {
     );
   }
 
+  const db = getDb();
   const fichasDelUsuario = db
     .select({ id: clientes.id })
     .from(clientes)
@@ -30,10 +31,7 @@ export async function GET() {
         },
       },
     },
-    orderBy: (tabla, { asc, desc }) => [
-      desc(tabla.mes),
-      asc(tabla.id),
-    ],
+    orderBy: (tabla, { asc, desc }) => [desc(tabla.mes), asc(tabla.id)],
   });
 
   return NextResponse.json(listaPedidos, { headers });

@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db } from "../../../src/db";
+import { getDb } from "../../../src/db/d1";
 import { clientes, planes } from "../../../src/db/schema";
 import { getSession } from "../../../src/lib/session";
 
@@ -37,7 +37,8 @@ export async function registrarCliente(
   const { id: userId, name: nombre, email } = sesion.user;
 
   try {
-    const plan = db
+    const db = getDb();
+    const plan = await db
       .select({ id: planes.id })
       .from(planes)
       .where(eq(planes.id, planId))
@@ -50,15 +51,14 @@ export async function registrarCliente(
       };
     }
 
-    const clienteCreado = db
+    const [clienteCreado] = await db
       .insert(clientes)
       .values({ userId, nombre, email: email.trim().toLowerCase(), planId })
       .onConflictDoNothing()
-      .returning({ id: clientes.id })
-      .get();
+      .returning({ id: clientes.id });
 
     if (!clienteCreado) {
-      const clienteExistente = db
+      const clienteExistente = await db
         .select({ id: clientes.id })
         .from(clientes)
         .where(eq(clientes.userId, userId))
