@@ -1,8 +1,8 @@
 # Club Tueste Norte
 
-Área de socios del Club Tueste Norte, desarrollada durante las semanas 6, 7 y 8 de las prácticas de CODE NODE.
+Área de socios del Club Tueste Norte, desarrollada durante las semanas 6, 7, 8 y 9 de las prácticas de CODE NODE.
 
-El proyecto permite descubrir los cafés del mes, consultar sus notas de cata y simular el precio de una suscripción según el número de bolsas. Los socios pueden crear una cuenta, elegir un plan y consultar sus propios pedidos.
+El proyecto permite descubrir los cafés del mes, consultar sus notas de cata y simular el precio de una suscripción según el número de bolsas. Los socios pueden crear una cuenta, elegir un plan, consultar sus propios pedidos y pausar o reanudar su suscripción desde el perfil.
 
 [Ver Club Tueste Norte en producción](https://tueste-norte-club.migueperezdev.workers.dev/)
 
@@ -18,7 +18,7 @@ El proyecto permite descubrir los cafés del mes, consultar sus notas de cata y 
 
 ## Cómo arrancar el proyecto
 
-Los siguientes pasos corresponden a la rama `semana-8`. Se necesita Node.js compatible con Next.js 16 y npm. Durante el desarrollo se utilizó Node.js 24.19.0 y npm 11.17.0.
+Los siguientes pasos corresponden a la rama `feature/pausa-suscripcion` de la semana 9. Se necesita Node.js compatible con Next.js 16 y npm. Durante el desarrollo se utilizó Node.js 24.19.0 y npm 11.17.0.
 
 1. Desde la raíz del proyecto, instala las dependencias.
 
@@ -45,7 +45,9 @@ Los siguientes pasos corresponden a la rama `semana-8`. Se necesita Node.js comp
 
    ```cmd
    npx wrangler d1 migrations apply DB --local
+
    npx wrangler d1 execute DB --local --command "INSERT INTO planes (nombre, precio_mensual, gramos_mes) VALUES ('Descubrimiento', 19, 500), ('Cafetero', 35, 1000) ON CONFLICT(nombre) DO NOTHING"
+
    npm run dev
    ```
 
@@ -76,10 +78,11 @@ Si tu instalación utiliza otra dirección, modifica la URL del `fetch` en `app/
 | `/entradas` | Ejercicio 3 de la semana 6 con entradas obtenidas desde WordPress. |
 | `/registro` | Creación de una cuenta del club. |
 | `/login` | Inicio de sesión. |
-| `/club/perfil` | Perfil de la cuenta autenticada y cierre de sesión. |
+| `/club/perfil` | Perfil de la cuenta autenticada, estado de la suscripción, pausa, reanudación y cierre de sesión. |
 | `/club/alta` | Elección de un plan o consulta de la suscripción actual. |
 | `/club/pedidos` | Pedidos del socio autenticado, agrupados por mes. |
 | `/api/pedidos` | Consulta `GET` de los pedidos del socio autenticado en JSON. |
+| `/api/suscripciones/[id]` | Operación `PATCH` para pausar o reanudar una suscripción propia. |
 
 Las rutas dinámicas de cafés y métodos leen `params` con `await params`. Si el slug no existe, llaman a `notFound()`.
 
@@ -105,6 +108,7 @@ Entre los Client Components están:
 - `app/ejercicios/componentes/BotonFavorito.tsx`, que usa `useState` y `onClick` para alternar el estado de favorito.
 - `app/entradas/error.tsx`, que muestra el error del segmento y permite reintentar la carga.
 - `app/club/alta/formulario.tsx`, que usa `useActionState` para mostrar el resultado del alta.
+- `app/club/perfil/gestion-suscripcion.tsx`, que confirma la acción, envía el `PATCH`, bloquea los envíos dobles, muestra errores y solicita la actualización del perfil.
 
 Las props están tipadas con TypeScript.
 
@@ -161,10 +165,170 @@ Para compilar y probar en el entorno local de Workers, detén primero `npm run d
 
 ```cmd
 npx opennextjs-cloudflare build
+
 npx wrangler dev --port 3000
 ```
 
 La versión pública usa el D1 remoto. En Cloudflare, `BETTER_AUTH_URL` apunta a la URL pública y `BETTER_AUTH_SECRET` se configura como secreto del Worker. Los valores privados quedan fuera del repositorio.
+
+## Semana 9 · Pausa y reanudación
+
+La funcionalidad se desarrolla en la rama `feature/pausa-suscripcion`. Las comprobaciones descritas en esta sección corresponden al entorno local.
+
+La especificación del encargo está en [specs/pausa-suscripcion.md](specs/pausa-suscripcion.md), el plan y la matriz CA01–CA16 en [specs/plan-pausa-suscripcion.md](specs/plan-pausa-suscripcion.md), y la especificación del ejercicio en [ejercicios/spec-pausa.md](ejercicios/spec-pausa.md).
+
+Cada cuenta tiene cero o una ficha de suscripción en `clientes`. Su identificador es `clientes.id`, su propietario es `clientes.user_id` y su plan es `clientes.plan_id`. La pausa es inmediata y dura hasta que el socio reanuda.
+
+### Estados y controles del perfil
+
+| Situación | Contenido del perfil | Control disponible |
+| --- | --- | --- |
+| Activa | Plan y estado actual. | Pausar suscripción. |
+| Pausada | Plan, estado y aviso «Suscripción pausada hasta que la reanudes». | Reanudar suscripción. |
+| Cancelada | Plan y estado actual. | Sin controles de pausa o reanudación. |
+| Cuenta sin ficha | «No tienes ninguna suscripción». | Sin controles de gestión. |
+
+El enlace al historial propio permanece disponible. Pausar o reanudar conserva el plan y los pedidos anteriores. La reanudación no crea pedidos automáticamente. La cancelación no tiene una operación pública.
+
+`app/club/perfil/page.tsx` comprueba la sesión y consulta D1 con `clientes.user_id = session.user.id`. El componente cliente `gestion-suscripcion.tsx` pide confirmación, bloquea los envíos dobles y deshabilita el botón durante el envío y la actualización. Tras recibir un `200` con el identificador y el estado esperados, solicita una nueva lectura del perfil con `router.refresh()`.
+
+### Migraciones y protección de pedidos
+
+| Migración | Función |
+| --- | --- |
+| `drizzle/0003_estado_suscripcion.sql` | Añade `clientes.estado` con `NOT NULL DEFAULT 'activa'` y un `CHECK` para `activa`, `pausada` y `cancelada`. |
+| `drizzle/0004_protege_pedidos_en_pausa.sql` | Añade el trigger `pedidos_rechaza_suscripcion_pausada`, que rechaza inserciones de pedidos para una ficha pausada. |
+
+Las fichas existentes comienzan activas y mantienen sus identificadores, propietarios, planes y pedidos. Las migraciones anteriores se conservan.
+
+Aplica las migraciones locales con el comando indicado en «Cómo arrancar el proyecto». El endpoint `/api/pedidos` ofrece `GET`. Las pruebas de inserción se realizan directamente en D1 local; la creación de pedidos desde la aplicación queda fuera del alcance de esta funcionalidad.
+
+### Contrato de la API
+
+`PATCH /api/suscripciones/[id]` recibe el identificador de la ficha de suscripción, un entero positivo seguro. Las acciones admitidas son:
+
+```json
+{ "accion": "pausar" }
+```
+
+```json
+{ "accion": "reanudar" }
+```
+
+El servidor comprueba primero la sesión y después exige un `Origin` que coincida exactamente con el origen autorizado configurado en el servidor, incluidos esquema, host y puerto. La comprobación del origen se basa en esa configuración.
+
+La actualización se realiza con una sola operación `UPDATE … WHERE … RETURNING` que filtra por identificador, propietario de la sesión y estado de origen. Con cero filas actualizadas, una consulta por identificador y propietario distingue entre ficha ajena o inexistente y estado incompatible.
+
+| Código | Situación |
+| --- | --- |
+| `200` | Cambio guardado: `activa → pausada` o `pausada → activa`. La respuesta incluye `id` y `estado`. |
+| `400` | ID inválido, JSON malformado, acción ausente o acción desconocida. |
+| `401` | Falta una sesión válida. Esta comprobación precede a la del origen. |
+| `403` | Hay sesión, pero el `Origin` falta o no está autorizado. |
+| `404` | La ficha no existe o pertenece a otra cuenta. |
+| `409` | El estado no admite la acción: pausar una pausada, reanudar una activa o gestionar una cancelada. |
+| `500` | Fallo de escritura. Se devuelve un mensaje de error y se conserva el estado previo. |
+
+El perfil muestra los mensajes de error recibidos. Ante un fallo de conexión muestra un aviso para recargar el perfil antes de volver a intentarlo.
+
+### Comprobación HTTP desde Windows CMD
+
+Usa una cuenta de prueba registrada y con un plan elegido. Sustituye `CORREO_DE_PRUEBA`, `CONTRASENA_DE_PRUEBA` y el valor de `ID_FICHA` por los datos de esa cuenta. El identificador corresponde a su fila en `clientes`.
+
+Con el servidor arrancado, define el origen y un archivo temporal de cookies fuera del repositorio:
+
+```cmd
+set "ORIGEN=http://localhost:3000"
+set "ID_FICHA=1"
+set "JAR=%TEMP%\tueste-norte-pausa-%RANDOM%-%RANDOM%.cookies"
+```
+
+Inicia una sesión HTTP independiente de la del navegador y continúa cuando el resultado sea `HTTP 200`:
+
+```cmd
+curl.exe -sS -o NUL -w "HTTP %{http_code}\n" "%ORIGEN%/api/auth/sign-in/email" ^
+  -H "Origin: %ORIGEN%" ^
+  -H "Content-Type: application/json" ^
+  -c "%JAR%" ^
+  --data-raw "{\"email\":\"CORREO_DE_PRUEBA\",\"password\":\"CONTRASENA_DE_PRUEBA\"}"
+```
+
+Con la ficha activa, confirma la pausa:
+
+```cmd
+curl.exe -i -X PATCH "%ORIGEN%/api/suscripciones/%ID_FICHA%" ^
+  -H "Origin: %ORIGEN%" ^
+  -H "Content-Type: application/json" ^
+  -b "%JAR%" ^
+  --data-raw "{\"accion\":\"pausar\"}"
+```
+
+Con la ficha pausada, confirma la reanudación:
+
+```cmd
+curl.exe -i -X PATCH "%ORIGEN%/api/suscripciones/%ID_FICHA%" ^
+  -H "Origin: %ORIGEN%" ^
+  -H "Content-Type: application/json" ^
+  -b "%JAR%" ^
+  --data-raw "{\"accion\":\"reanudar\"}"
+```
+
+Al terminar, cierra esa sesión HTTP de prueba y elimina su archivo temporal de cookies:
+
+```cmd
+curl.exe -sS -o NUL -w "HTTP %{http_code}\n" "%ORIGEN%/api/auth/sign-out" ^
+  -X POST ^
+  -H "Origin: %ORIGEN%" ^
+  -H "Content-Type: application/json" ^
+  -b "%JAR%" ^
+  --data-raw "{}"
+```
+
+Cuando el cierre devuelva `HTTP 200`, elimina el archivo temporal:
+
+```cmd
+del "%JAR%"
+```
+
+Para probar una segunda cuenta, usa otro archivo de cookies. Si tu servidor utiliza otro puerto, ajusta la configuración del origen y `ORIGEN` a la misma dirección.
+
+### Comprobación en el navegador
+
+1. Inicia sesión con una cuenta que tenga una suscripción activa y abre `/club/perfil`.
+2. Cancela la confirmación de pausa y comprueba en Red que no se envía ningún `PATCH`.
+3. Confirma la pausa. Comprueba el `200`, el estado Pausada, el aviso y la conservación del plan.
+4. Recarga el perfil y vuelve a iniciar sesión. El estado guardado debe persistir.
+5. Abre el historial propio y comprueba los pedidos anteriores.
+6. Cancela la confirmación de reanudación y después confírmala. Comprueba el `200` y el estado Activa.
+7. Con una respuesta demorada, comprueba que el control permanece deshabilitado durante el envío.
+8. Con una ficha pausada y la página abierta, selecciona Sin conexión en Red e intenta reanudar. Comprueba el error visible, la conservación del estado y la recuperación del botón.
+9. Restablece Sin limitaciones y recarga. Debe conservarse el estado guardado y desaparecer el mensaje de conexión.
+10. Registra otra cuenta y abre el perfil antes de elegir un plan. Debe aparecer «No tienes ninguna suscripción» sin controles de pausa o reanudación.
+11. Tras cerrar sesión, abre `/club/perfil` y comprueba la redirección a `/login`.
+
+CA14 requiere provocar un fallo de escritura en D1 local mientras siguen funcionando la sesión y las lecturas. La respuesta debe ser `500` y el perfil debe mostrar el error conservando el estado previo.
+
+### Registro de verificación · 25 de noviembre de 2026
+
+La API quedó registrada en el commit `a6c9699` y el perfil en `7c4de78`. La matriz completa y los resultados esperados se encuentran en el plan.
+
+| Criterio | Evidencia registrada |
+| --- | --- |
+| CA01–CA03 | Pausa y reanudación con `200`, cancelación de ambas confirmaciones sin `PATCH` y control deshabilitado durante el envío. Verificados en navegador. |
+| CA04 | Conservación del plan Cafetero y del estado Pausada tras recargar y volver a iniciar sesión con la cuenta de prueba. |
+| CA05 | Perfil e historial accesibles durante la pausa; comprobado el pedido previo en el historial. |
+| CA06 | Comparados los pedidos 1, 2 y 3 antes y después de pausar: se conservan todas las filas, identificadores, datos y estados, y la ficha mantiene el plan 2. |
+| CA07 | El trigger rechazó inserciones durante la pausa en las pruebas de D1 local. |
+| CA08 | Reanudación con el plan 2 y los pedidos 1 y 2 intactos, sin pedidos automáticos. Inserción posterior del pedido temporal 3 permitida en D1 local. |
+| CA09 | `401` sin sesión verificado en la API. Redirección a `/login` comprobada en navegador al abrir el perfil tras cerrar sesión. |
+| CA10–CA12 | `404` para fichas ajenas o inexistentes, `409` por estados incompatibles y `400` por entradas inválidas, verificados en el entorno temporal de la API. |
+| CA13 | Cuenta sin ficha comprobada en navegador: mensaje previsto y ausencia de controles de gestión. |
+| CA14 | Fallo de escritura provocado en D1 local: respuesta `500`, mensaje «No se pudo actualizar la suscripción» visible en el perfil, plan Cafetero y estado Pausada conservados. |
+| CA15–CA16 | Concurrencia `200 + 409` y comprobaciones de origen y orden de autenticación, verificadas en el entorno temporal de la API. |
+
+Además, se comprobó el fallo de conexión en el navegador y la conservación del estado después de restablecer la conexión y recargar. La ocultación de controles para una ficha cancelada se revisó en el código del perfil.
+
+El pedido temporal 3 se retiró después de las pruebas, conservando los pedidos originales 1 y 2. El trigger de prueba `prueba_ca14_estado_cliente_1` también se retiró: la consulta de comprobación devolvió `triggers_prueba = 0`. La ficha 1 quedó con el plan 2 y el estado `pausada`.
 
 ## Diseño responsive
 
@@ -180,11 +344,13 @@ Para revisar el proyecto en local puedes ejecutar:
 
 ```cmd
 npm run lint
+
 npx tsc --noEmit
+
 npm run build
 ```
 
-Durante la práctica se comprobaron manualmente:
+Durante las semanas 6–8 se comprobaron manualmente:
 
 - La navegación, el selector de bolsas y el retorno a la selección inicial al recargar.
 - Las fichas de cafés y métodos, el 404 para slugs inexistentes y los estados de carga, error y recuperación de las entradas.
