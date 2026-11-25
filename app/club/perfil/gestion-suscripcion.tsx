@@ -17,6 +17,8 @@ export function GestionSuscripcion({
   const [error, setError] = useState("");
   const etiqueta = accion === "pausar" ? "Pausar suscripción" : "Reanudar suscripción";
   const estadoEsperado = accion === "pausar" ? "pausada" : "activa";
+  const ocupado = enviando || actualizando;
+  const textoBoton = enviando ? "Guardando…" : actualizando ? "Actualizando…" : etiqueta;
 
   async function gestionar() {
     if (peticionEnCurso.current || actualizando) return;
@@ -73,11 +75,12 @@ export function GestionSuscripcion({
     <div className="space-y-2">
       <button
         type="button"
-        disabled={enviando || actualizando}
+        disabled={ocupado}
+        aria-busy={ocupado}
         onClick={gestionar}
         className="rounded border px-4 py-2 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {etiqueta}
+        {textoBoton}
       </button>
       {error && <p role="alert">{error}</p>}
     </div>
