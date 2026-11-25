@@ -35,6 +35,18 @@ export function GestionSuscripcion({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accion }),
       });
+
+      if (respuesta.status === 401) {
+        window.location.replace("/login");
+        return;
+      }
+
+      if (respuesta.status === 409) {
+        setError("El estado de la suscripción ha cambiado. Revisa el estado actual antes de volver a intentarlo.");
+        iniciarActualizacion(() => router.refresh());
+        return;
+      }
+
       const datos: unknown = await respuesta.json().catch(() => null);
 
       if (
