@@ -358,3 +358,47 @@ Durante las semanas 6–8 se comprobaron manualmente:
 - En D1 local, dos cuentas con pedidos distintos vieron únicamente sus propios pedidos, tanto en la página como en la API.
 - En el Worker local compilado, se comprobó el acceso a los pedidos con sesión y el bloqueo al cerrarla.
 - En producción, se comprobó el registro, la persistencia del plan al recargar, la vista sin pedidos y la vuelta a `/login` tras cerrar sesión.
+
+<!-- semana9-revision-produccion-2026-11-25 -->
+## Revisión y despliegue de la semana 9
+
+### Mejoras realizadas tras la revisión
+
+Se incorporaron dos mejoras al componente de gestión de la suscripción:
+
+| Commit | Problema observado | Mejora aplicada |
+| --- | --- | --- |
+| `1c1e3bc` | El botón se deshabilitaba, pero conservaba su etiqueta habitual durante la operación. | Se añadieron los textos «Guardando…» y «Actualizando…», junto con `aria-busy` para comunicar el progreso. |
+| `1e43935` | Una sesión caducada o un conflicto podían dejar al usuario trabajando con un perfil desactualizado. | Ante un 401 se navega a `/login`; ante un 409 se muestra un aviso y se refresca el perfil para recuperar el estado actual. |
+
+Estas mejoras mantienen la confirmación previa y el bloqueo de peticiones repetidas.
+
+### Comprobaciones adicionales en local
+
+- Conflicto entre dos pestañas con la misma cuenta: la petición desde el perfil desactualizado devuelve 409. Se muestra el aviso y el perfil recupera el estado actual.
+- Sesión cerrada desde otra pestaña: la siguiente operación devuelve 401 y conduce automáticamente a `/login`.
+- ESLint del componente de gestión: superado.
+- Compilación de Next.js y generación del Worker mediante `npx opennextjs-cloudflare build`: completadas después de las dos mejoras.
+
+Las pruebas detalladas de errores, concurrencia y protección de pedidos en D1 corresponden a las comprobaciones locales documentadas anteriormente.
+
+### Despliegue y comprobación en producción
+
+Aplicación pública:
+
+https://tueste-norte-club.migueperezdev.workers.dev
+
+El 25 de noviembre de 2026:
+
+- Se exportó un respaldo de D1 remoto antes de aplicar las migraciones.
+- Se aplicaron correctamente `0003_estado_suscripcion.sql` y `0004_protege_pedidos_en_pausa.sql` en D1 remoto.
+- Se publicó el Worker con OpenNext y Cloudflare.
+- Se creó la cuenta de prueba «Prueba producción semana 9», con correo `semana9-produccion@example.com`.
+- Se comprobó el perfil con el plan Cafetero y la suscripción activa.
+- Se confirmó la pausa: apareció el estado «Pausada», el aviso correspondiente y el botón «Reanudar suscripción».
+- Se confirmó la reanudación: volvió el estado «Activa», desapareció el aviso y apareció «Pausar suscripción».
+- Se comprobó la conservación del estado al recargar y del plan Cafetero durante el recorrido.
+
+La comprobación pública cubre el flujo básico de alta, consulta del perfil, pausa y reanudación. La matriz detallada de casos negativos se verificó en local.
+
+Las cuentas y los datos de D1 local y remoto son independientes. Las contraseñas, cookies y respaldos de la base de datos quedan fuera del repositorio.
