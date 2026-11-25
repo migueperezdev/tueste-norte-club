@@ -9,16 +9,28 @@ export const planes = sqliteTable("planes", {
   gramosMes: integer("gramos_mes").notNull(),
 });
 
-export const clientes = sqliteTable("clientes", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  nombre: text("nombre").notNull(),
-  email: text("email").notNull().unique(),
-  userId: text("user_id").unique().references(() => user.id),
-  planId: integer("plan_id").notNull().references(() => planes.id),
-  fechaAlta: integer("fecha_alta", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-});
+export const clientes = sqliteTable(
+  "clientes",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    nombre: text("nombre").notNull(),
+    email: text("email").notNull().unique(),
+    userId: text("user_id").unique().references(() => user.id),
+    planId: integer("plan_id").notNull().references(() => planes.id),
+    fechaAlta: integer("fecha_alta", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    estado: text("estado", {
+      enum: ["activa", "pausada", "cancelada"],
+    }).notNull().default("activa"),
+  },
+  (tabla) => [
+    check(
+      "clientes_estado_valido",
+      sql`${tabla.estado} IN ('activa', 'pausada', 'cancelada')`,
+    ),
+  ],
+);
 
 export const pedidos = sqliteTable(
   "pedidos",

@@ -22,6 +22,20 @@
       "when": 1794691388714,
       "tag": "0002_vincula_clientes_con_usuarios",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1795574087361,
+      "tag": "0003_estado_suscripcion",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1795576764031,
+      "tag": "0004_protege_pedidos_en_pausa",
+      "breakpoints": true
     }
   ]
 }
